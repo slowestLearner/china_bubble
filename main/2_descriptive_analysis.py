@@ -20,6 +20,9 @@ CSMAR_DIR = os.path.join(BASE_DIR, "data", "csmar")
 RESULTS_DIR = os.path.join(BASE_DIR, "output_j", "results")
 FIGURES_DIR = os.path.join(BASE_DIR, "output_j", "figures")
 
+# original sources
+RESULTS_DIR_OLD = os.path.join(BASE_DIR, "output", "results")
+
 sys.path.append(UTIL_DIR)
 from general_import import *
 import general_functions as gf
@@ -43,7 +46,7 @@ from format_results import *
 
 # === 1. SSE Composite Index Overview ===
 mkt_ret = pd.read_csv(
-    os.path.join(RESULTS_DIR, "stock_character/market_return_daily.csv")
+    os.path.join(RESULTS_DIR_OLD, "stock_character/market_return_daily.csv")
 )
 mkt_ret["TRADE_DATE"] = pd.to_datetime(
     mkt_ret["TRADE_DATE"], infer_datetime_format=True
@@ -116,7 +119,7 @@ fig.savefig(
 #### Raw Returns Calculation ###
 
 price_daily = pd.read_parquet(
-    os.path.join(RESULTS_DIR, "stock_character/stock_price_daily_20211130")
+    os.path.join(RESULTS_DIR_OLD, "stock_character/stock_price_daily_20211130")
 )
 
 price_daily = price_daily[price_daily.TRADE_DATE.between(20140700, 20160200)]
@@ -130,7 +133,7 @@ price_daily["cum_ret"] = (
 
 # import stock beta before 2014 (computed in Step 1 file)
 stock_ret_beta = pd.read_parquet(
-    os.path.join(RESULTS_DIR, "stock_character/stock_beta_before2014")
+    os.path.join(RESULTS_DIR_OLD, "stock_character/stock_beta_before2014")
 )
 
 price_daily = price_daily.merge(stock_ret_beta[["SEC_CODE", "beta_b2014"]], how="left")
@@ -209,7 +212,7 @@ fig.savefig(
     bbox_inches="tight",
 )
 
-### Raw Retruns ###
+### Raw Ret runs ###
 fig, ax = plt.subplots(figsize=(12, 6))
 ax.plot(data1.TRADE_DATE, data1.cum_ret, label=f"{name1}")
 ax.plot(data2.TRADE_DATE, data2.cum_ret, label=f"{name2}")

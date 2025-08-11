@@ -21,6 +21,7 @@ RESULTS_DIR = os.path.join(BASE_DIR, "output_j", "results")
 FIGURES_DIR = os.path.join(BASE_DIR, "output_j", "figures")
 TABLES_DIR = os.path.join(BASE_DIR, "output_j", "tables")
 
+RESULTS_DIR_OLD = os.path.join(BASE_DIR, "output", "results")
 
 sys.path.append(UTIL_DIR)
 from general_import import *
@@ -46,7 +47,7 @@ from format_results import *
 
 # import data
 stock_character = pd.read_parquet(
-    os.path.join(RESULTS_DIR, "stock_character/stock_processed")
+    os.path.join(RESULTS_DIR, "stock_character/stock_processed.parquet")
 )
 
 # === 1. Individual stock bubbles ===
@@ -71,8 +72,9 @@ max_ret.columns = ["SEC_CODE", "max_cum_ret_date", "max_cum_ret"]
 kk = max_ret.groupby(["max_cum_ret_date"]).count()[["SEC_CODE"]]
 
 ### Crash ###
+
 kk = ret_201415.merge(max_ret, on="SEC_CODE")
-kk = kk[kk.TRADE_DATE >= kk.max_cum_ret_date]
+kk = kk[kk.TRADE_DATE >= kk.max_cum_ret_date]  # look at the period after the top
 bubble_size = kk.loc[kk.groupby(["SEC_CODE"])["cum_ret"].idxmin()][
     [
         "SEC_CODE",

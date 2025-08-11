@@ -12,6 +12,8 @@ Estimated running time: 37 min
 
 import sys
 import os
+import time
+from joblib import Parallel, delayed, cpu_count, parallel_backend
 
 # defining paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,6 +22,8 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 RESULTS_DIR = os.path.join(BASE_DIR, "output_j", "results")
 FIGURES_DIR = os.path.join(BASE_DIR, "output_j", "figures")
 TABLES_DIR = os.path.join(BASE_DIR, "output_j", "tables")
+
+RESULTS_DIR_OLD = os.path.join(BASE_DIR, "output", "results")
 
 sys.path.append(UTIL_DIR)
 from general_import import *
@@ -46,24 +50,27 @@ from format_results import *
 
 # load stock characteristics data
 stock_character = pd.read_parquet(
-    os.path.join(RESULTS_DIR, "stock_character/stock_processed_win")
+    os.path.join(RESULTS_DIR, "stock_character/stock_processed_win.parquet")
 )
 
 
-# merge investor data
+# function to merge retail and institution files together
 def combine_month_data(retail_file, institution_file, keep_cols, stock_character):
     # retail data
     retail_data = pd.read_parquet(retail_file, columns=keep_cols)
     retail_data = retail_data[retail_data["inside"] == 1]  # keep inside assets
     retail_data["investor_type"] = "retail"
+
     # institutional data
     institution_data = pd.read_parquet(institution_file, columns=keep_cols)
     institution_data = institution_data[
         institution_data["inside"] == 1
     ]  # keep inside assets
     institution_data["investor_type"] = "institution"
+
     # merge investors data
     month_data = pd.concat([retail_data, institution_data], ignore_index=True)
+
     # merge stock characteristics data
     month_data = pd.merge(
         month_data, stock_character, on=["SEC_CODE", "TRADE_DATE"], how="left"
@@ -79,9 +86,10 @@ def combine_month_data(retail_file, institution_file, keep_cols, stock_character
     return month_data
 
 
-# first stage regression
+# first stage regression (instrumenting log market value)
 def group_first_regression(group, controls, trade_date, industry_cols):
     group = group.copy()
+
     group_label = group["group_label"].iloc[0]
     group_type = group["investor_type"].iloc[0]
     #     if group.shape[0] <  150:
@@ -134,7 +142,7 @@ def group_first_regression(group, controls, trade_date, industry_cols):
     return res_df
 
 
-# second stage regression
+# second stage regression (estimating demand elasticity)
 def group_second_regression(group, controls, trade_date, save_path, industry_cols):
     group = group.copy()
     group = group.sort_values(["SEC_CODE"])
@@ -218,14 +226,13 @@ def group_second_regression(group, controls, trade_date, save_path, industry_col
 
 # obtain time periods needed
 mkt_ret = pd.read_csv(
-    os.path.join(RESULTS_DIR, "stock_character/mkt_return_month.csv"),
+    os.path.join(RESULTS_DIR_OLD, "stock_character/mkt_return_month.csv"),
     parse_dates=["TRADE_DATE"],
 )
 mkt_ret.TRADE_DATE = mkt_ret.TRADE_DATE.astype("str")
 mkt_ret = gf.convert_date(mkt_ret, "TRADE_DATE", "TRADE_DATE")
 
 trade_dates = pd.Series(sorted(mkt_ret.TRADE_DATE.unique()))
-
 trade_dates = trade_dates[trade_dates.between(20110000, 20200000)].tolist()
 
 # define columns used
@@ -271,6 +278,7 @@ group_cols = [
     "w_i_n_adjust",
 ]
 
+# TODO: again, we can't have past returns as controls... if needed we can construct something like analyst revisions, but variables highly related to current price can't controlled for
 exog_cols = [
     "past_cumret_12",
     "beta",
@@ -295,12 +303,72 @@ gf.create_path(second_path_reg_summary)
 first_path = os.path.join(RESULTS_DIR, "Regression_Results", reg_version, "IVTest")
 gf.create_path(first_path)
 
-for trade_date in tqdm(trade_dates):
+# tt = time.time()
+# for trade_date in tqdm(trade_dates[:30]):
+#     print(trade_date)
+#     retail_file = os.path.join(
+#         RESULTS_DIR_OLD,
+#         "group_regre_data_09062022",
+#         "retail",
+#         f"retail_group_{trade_date}",
+#     )
+#     insti_file = os.path.join(
+#         RESULTS_DIR_OLD,
+#         "group_regre_data_09062022",
+#         "institution",
+#         f"group_insti_{trade_date}",
+#     )
+#     month_data = combine_month_data(
+#         retail_file, insti_file, group_cols, stock_character
+#     )
+#     group_list = sorted(month_data["group_label"].unique())
+#     res_first = []
+#     res_second = []
+#     for group_label in group_list:
+#         if group_label.split("_")[0] in [
+#             "310",
+#             "410",
+#             "420",
+#             "430",
+#             "440",
+#             "450",
+#             "QFII",
+#             "RQFII",
+#             "annuity",
+#             "social",
+#         ]:
+#             continue
+#         group_regre = month_data[month_data.group_label == group_label]
+#         res_df = group_first_regression(
+#             group_regre, exog_cols, trade_date, industry_cols
+#         )
+#         res_first.append(res_df)
+#         res_df = group_second_regression(
+#             group_regre, exog_cols, trade_date, second_path, industry_cols
+#         )
+#         res_second.append(res_df)
+#     res_first = pd.concat(res_first, ignore_index=True)
+#     res_first.to_parquet(
+#         "{}/reg_results_{}".format(first_path, trade_date), index=False
+#     )
+#     res_second = pd.concat(res_second, ignore_index=True)
+#     res_second.to_parquet(
+#         "{}/reg_results_{}".format(second_path_reg_summary, trade_date), index=False
+#     )
+
+# print(f"running sequentially took a total of {((time.time() - tt) / 60):.2f} mins")
+
+
+# helper function to process one trade date
+def process_one_trade_date(trade_date):
     retail_file = os.path.join(
-        RESULTS_DIR, "group_regre_data_09062022", "retail", f"retail_group_{trade_date}"
+        RESULTS_DIR_OLD,
+        "group_regre_data_09062022",
+        "retail",
+        f"retail_group_{trade_date}",
     )
     insti_file = os.path.join(
-        RESULTS_DIR,
+        RESULTS_DIR_OLD,
         "group_regre_data_09062022",
         "institution",
         f"group_insti_{trade_date}",
@@ -342,3 +410,47 @@ for trade_date in tqdm(trade_dates):
     res_second.to_parquet(
         "{}/reg_results_{}".format(second_path_reg_summary, trade_date), index=False
     )
+
+
+# NOTE: I suggest running this in parallel.
+#   Testing: Running 30 dates in sequential mode took 2.03 mins. Doing the same in parallel mode (6 cores, a 5-year-old map laptop) took 0.71 mins
+#   I ended up running the whole thing in parallel. The whole thing took 12.6 mins
+tt = time.time()
+Parallel(n_jobs=os.cpu_count() - 2, backend="loky", batch_size=1)(
+    delayed(process_one_trade_date)(trade_date) for trade_date in trade_dates
+)
+print(f"parallel processing took {((time.time() - tt) / 60):.2f} mins")
+
+# # NOTE: I get these error messages. Seems like there are some NAN in the data that goes into the regressions... consider debugging later:
+# /Users/slowlearner/Dropbox/SpeculativeIdeas/china_demand/4_Code/bubble_data_and_code_reorganized/code_j/.venv/lib/python3.13/site-packages/statsmodels/sandbox/regression/gmm.py:147: RuntimeWarning: invalid value encountered in dot
+#   Fty = np.dot(F.T, y)
+# /Users/slowlearner/Dropbox/SpeculativeIdeas/china_demand/4_Code/bubble_data_and_code_reorganized/code_j/.venv/lib/python3.13/site-packages/statsmodels/regression/linear_model.py:1743: RuntimeWarning: invalid value encountered in subtract
+#   centered_endog = model.wendog - model.wendog.mean()
+
+# # spot check: check that results are identical
+# out_new = pd.read_parquet(
+#     "../../output_j/results/Regression_Results/EqualandBook_topcode1/IV2SLSsummary/reg_results_20191231"
+# )
+# out_old = pd.read_parquet(
+#     "../../output/results/Regression_Results/EqualandBook_topcode1/IV2SLSsummary/reg_results_20191231"
+# )
+
+# pd.testing.assert_frame_equal(
+#     out_new.reset_index(drop=True),
+#     out_old.reset_index(drop=True),
+#     check_dtype=False,
+# )
+
+
+# out_new = pd.read_parquet(
+#     "../../output_j/results/Regression_Results/EqualandBook_topcode1/IVTest/reg_results_20190131"
+# )
+# out_old = pd.read_parquet(
+#     "../../output/results/Regression_Results/EqualandBook_topcode1/IVTest/reg_results_20190131"
+# )
+
+# pd.testing.assert_frame_equal(
+#     out_new.reset_index(drop=True),
+#     out_old.reset_index(drop=True),
+#     check_dtype=False,
+# )

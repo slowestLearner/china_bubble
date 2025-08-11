@@ -26,10 +26,32 @@ This section details the data processing and analysis scripts. They should be ru
 
 ### `1_stock_data_processing.py`
 
-This script computes key characteristics, and saves the processed data and a summary table.
+Computes stock characteristics and saves the processed data and a summary table.
 
 
 ### `2_descriptive_analysis.py`
 
-This script takes the processed data and generates descriptive plots and tables for the analysis portion of the project.
+Produces descriptive price path plots. 
+
+
+### `3_boom_bust_stock_analysis.py`
+
+- Create summary statistics about "boom bust stocks". 
+- Identify stocks that experience large vs small bubbles
+- Estimate and plot differences in characteristics between bubble vs non-bubble stocks
+
+### `4_retail_entries.py`
+
+- Plot new entry of retail investors
+- Plot net retail flows (TODO: should we plot retail flows, and possibly also new entries, on bubble vs non-bubble stocks?)
+
+### `5_top_coded_iv_construction.py`
+
+- Estimate KY preference parameters of investors
+
+### 
+
+
+
+
 

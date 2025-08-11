@@ -21,6 +21,8 @@ RESULTS_DIR = os.path.join(BASE_DIR, "output_j", "results")
 FIGURES_DIR = os.path.join(BASE_DIR, "output_j", "figures")
 TABLES_DIR = os.path.join(BASE_DIR, "output_j", "tables")
 
+RESULTS_DIR_OLD = os.path.join(BASE_DIR, "output", "results")
+
 sys.path.append(UTIL_DIR)
 from general_import import *
 import general_functions as gf
@@ -44,7 +46,7 @@ from format_results import *
 
 # === 1. Number of Investors on Entry ===
 
-entry = pd.read_parquet(os.path.join(RESULTS_DIR, "flow_entry_data/new_entry"))
+entry = pd.read_parquet(os.path.join(RESULTS_DIR_OLD, "flow_entry_data/new_entry"))
 entry = entry.rename(columns={"Trade_Date": "TRADE_DATE"})
 entry["TRADE_DATE"] = pd.to_datetime(entry["TRADE_DATE"], format="%Y%m%d")
 
@@ -84,6 +86,7 @@ plt.show()
 
 # === 2. Calculate the time-series of capital net flows ===
 
+# TODO: later can read these from a file, output from script `_descriptive_analysis.py`
 # define big bubble stocks
 big_bubble = set(
     [
@@ -263,7 +266,7 @@ market_cap_base = market_cap[market_cap.TRADE_DATE == 20140630]
 # import Flow data
 # import capital flow data from all retail investors (not sample)
 netFlow_all = pd.read_parquet(
-    os.path.join(RESULTS_DIR, "flow_entry_data/net_flow/type_net_flow_11_19")
+    os.path.join(RESULTS_DIR_OLD, "flow_entry_data/net_flow/type_net_flow_11_19")
 )
 netFlow_all = netFlow_all.sort_values(
     ["TRADE_DATE", "SEC_CODE", "ACCT_TYPE2", "acct_attribute"]
@@ -275,7 +278,7 @@ netFlow_all["retail"] = list(
 netFlow_all = netFlow_all[netFlow_all.retail == 1]
 
 flow_cohort = pd.read_parquet(
-    os.path.join(RESULTS_DIR, "flow_entry_data/cohort_netflow/")
+    os.path.join(RESULTS_DIR_OLD, "flow_entry_data/cohort_netflow/")
 )
 
 ### Retail Net Flows ###
