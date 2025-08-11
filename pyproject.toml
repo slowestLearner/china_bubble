@@ -1,0 +1,13 @@
+[project]
+name = "china-bubble"
+version = "0.1.0"
+description = ""
+dependencies = [
+    "linearmodels=6.1",
+    "numpy=2.3.2",
+    "pandas=2.3.1",
+    "pathlib=1.0.1",
+    "scipy=1.16.1",
+    "statsmodels=0.14.5",
+    "tqdm=4.67.1",
+]
