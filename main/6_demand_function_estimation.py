@@ -12,6 +12,9 @@ Estimated running time:  30 sec
 
 import sys
 import os
+import time
+from joblib import Parallel, delayed
+import collections
 
 # defining paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -20,6 +23,8 @@ DATA_DIR = os.path.join(BASE_DIR, "data")
 RESULTS_DIR = os.path.join(BASE_DIR, "output_j", "results")
 FIGURES_DIR = os.path.join(BASE_DIR, "output_j", "figures")
 TABLES_DIR = os.path.join(BASE_DIR, "output_j", "tables")
+
+RESULTS_DIR_OLD = os.path.join(BASE_DIR, "output", "results")
 
 sys.path.append(UTIL_DIR)
 from general_import import *
@@ -49,7 +54,7 @@ from statsmodels.iolib.table import SimpleTable
 from matplotlib.lines import Line2D
 import seaborn as sns
 
-### Load Beat Coefficients ###
+### Load Beta Coefficients (KY preference parameters) ###
 
 
 def get_month_res_dict(res_paths):
@@ -70,7 +75,7 @@ def get_params(res_dic):
 
 # get trade_dates list
 with open(
-    os.path.join(RESULTS_DIR, "stock_character", "mkt_return_month.csv"), "r"
+    os.path.join(RESULTS_DIR_OLD, "stock_character", "mkt_return_month.csv"), "r"
 ) as _:
     mkt_ret = pd.read_csv(_, parse_dates=["TRADE_DATE"])
 mkt_ret.TRADE_DATE = mkt_ret.TRADE_DATE.astype("str")
@@ -82,13 +87,14 @@ trade_dates = [str(x) for x in trade_dates]
 keep_cols = ["group_label", "TRADE_DATE", "HOLD_Value"]
 
 retail_hold = pd.read_parquet(
-    os.path.join(RESULTS_DIR, "group_regre_data_09062022", "retail"), columns=keep_cols
+    os.path.join(RESULTS_DIR_OLD, "group_regre_data_09062022", "retail"),
+    columns=keep_cols,
 )
 retail_hold = (
     retail_hold.groupby(["TRADE_DATE", "group_label"])["HOLD_Value"].sum().reset_index()
 )
 institute_hold = pd.read_parquet(
-    os.path.join(RESULTS_DIR, "group_regre_data_09062022", "institution"),
+    os.path.join(RESULTS_DIR_OLD, "group_regre_data_09062022", "institution"),
     columns=keep_cols,
 )
 institute_hold = (
@@ -104,19 +110,60 @@ file_folder = glob.glob(
     )
 )
 
-beta_raw = []
-for trade_date in tqdm(trade_dates):
-    res_paths = []
-    for _ in file_folder:
-        if _.split("/")[-1].split("_")[-1][:-4] == trade_date:
-            res_paths.append(_)
-    res_paths = sorted(res_paths)
+# tt = time.time()
+# beta_raw = []
+# for trade_date in tqdm(trade_dates):
+#     res_paths = []
+#     for _ in file_folder:
+#         if _.split("/")[-1].split("_")[-1][:-4] == trade_date:
+#             res_paths.append(_)
+#     res_paths = sorted(res_paths)
+#     res_dic = get_month_res_dict(res_paths)
+#     res_params = get_params(res_dic)
+#     beta = pd.DataFrame.from_dict(res_params, orient="index").reset_index()
+#     beta = beta.rename(columns={"index": "group_label"})
+#     beta["TRADE_DATE"] = int(trade_date)
+#     beta_raw.append(beta)
+# print(f"took {((time.time() - tt) / 60):.2f} mins")
+
+
+# == NOTE: parallel is a bit faster (around 3 times with 6 cores)
+# Create a dictionary mapping each date to a list of its files
+date_to_files_map = collections.defaultdict(list)
+for path in file_folder:
+    # Assumes date is the last part of the filename before the extension
+    trade_date = path.split("/")[-1].split("_")[-1][:-4]
+    date_to_files_map[trade_date].append(path)
+
+
+def process_trade_date(trade_date, files_map):
+    """
+    Processes all files for a single trade date and returns a DataFrame.
+    """
+    res_paths = sorted(files_map.get(trade_date, []))
+
+    # Return None if no files are found for this date
+    if not res_paths:
+        return None
+
     res_dic = get_month_res_dict(res_paths)
     res_params = get_params(res_dic)
+
     beta = pd.DataFrame.from_dict(res_params, orient="index").reset_index()
     beta = beta.rename(columns={"index": "group_label"})
     beta["TRADE_DATE"] = int(trade_date)
-    beta_raw.append(beta)
+
+    return beta
+
+
+# put together a list of betas already estimated
+beta_raw = Parallel(n_jobs=os.cpu_count() - 2)(
+    delayed(process_trade_date)(date, date_to_files_map) for date in tqdm(trade_dates)
+)
+
+# # checked: parallel is the same as serial
+# beta_raw[1].equals(beta_raw_bk[1])
+# beta_raw[100].equals(beta_raw_bk[100])
 
 select_cols = [
     "const",
@@ -198,6 +245,7 @@ var_list = [
     "past_cumret_12",
 ]
 
+# summarize by different periods
 early_retail = temp[(temp.TRADE_DATE.between(20110000, 20140000)) & (temp.retail == 1)]
 early_insti = temp[(temp.TRADE_DATE.between(20110000, 20140000)) & (temp.retail == 0)]
 

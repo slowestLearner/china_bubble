@@ -70,15 +70,15 @@ stock_character["SOE"] = stock_character.StockAttr.isin(
     ["地方国有企业", "中央国有企业"]
 ).astype("int")
 
-# import me_iv - TODO: this is Chen's instrument, right?
+# import me_iv - NOTE: this is Chen's instrument, right?
 me_IV = pd.read_parquet(os.path.join(RESULTS_DIR_OLD, "stock_character/me_iv"))
 
-# TODO: this is the instrument used in the paper, right?
+# NOTE: this (TYPE2 == 'SNQR' is the instrument specification used in the paper, right?
 me_IV = me_IV[me_IV.TYPE2 == "SNQR"]
 me_IV = me_IV[["SEC_CODE", "me_iv_equal", "me_iv_weight", "Month_End"]]
 me_IV.columns = ["SEC_CODE", "me_iv1", "me_iv2", "Month_End"]  # rename
 
-# TODO: these zero values in instruments just meant that these are not held by anyone, right?
+# NOTE: these zero values in instruments just meant that these are not held by anyone, right?
 me_IV["me_iv1"] = np.where(
     me_IV["me_iv1"] <= 1, 1, me_IV["me_iv1"]
 )  # replace me_iv1 < 1 with 1
@@ -137,7 +137,7 @@ stock_character["TRADE_DATE"] = stock_character["Month_End"]
 
 stock_character["price"] = np.exp(stock_character["ln_price"])
 
-# import stock beta before 2014 (TODO: why? Btw, this only has around 50% correlation with the current beta)
+# import stock beta before 2014
 stock_ret_beta = pd.read_parquet(
     os.path.join(RESULTS_DIR_OLD, "stock_character/stock_beta_before2014")
 )
@@ -210,6 +210,7 @@ stock_character = pd.get_dummies(
 stock_character["TRADE_DATE"] = stock_character["Month_End"]
 
 
+# NOTE: this winsorization is used often, consider making a utility function. I also recall there are some built-in methods for it?
 # Winsorize variables in the cross-section
 def winsor(target, left, right):
     result = target.copy()
@@ -278,7 +279,7 @@ early = temp[temp.TRADE_DATE.between(20110000, 20139999)]
 middle = temp[temp.TRADE_DATE.between(20140000, 20169999)]
 late = temp[temp.TRADE_DATE.between(20170000, 20199999)]
 
-# TODO: these "%" are not escaped in latex. Probably need to slightly improve these table outputting later
+# NOTE: these "%" are not escaped in latex. Not needed now, but later need to add escapes, etc.
 early_summary = early.groupby("SEC_CODE")[var_list].mean()
 early_summary = early_summary.describe().T[["count", "mean", "50%", "std"]]
 early_summary.columns = ["count_early", "mean_early", "50%_early", "std_early"]

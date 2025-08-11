@@ -86,7 +86,7 @@ plt.show()
 
 # === 2. Calculate the time-series of capital net flows ===
 
-# TODO: later can read these from a file, output from script `_descriptive_analysis.py`
+# NOTE: later can read these from a file, output from script `_descriptive_analysis.py`
 # define big bubble stocks
 big_bubble = set(
     [

@@ -13,7 +13,7 @@ Estimated running time: 37 min
 import sys
 import os
 import time
-from joblib import Parallel, delayed, cpu_count, parallel_backend
+from joblib import Parallel, delayed
 
 # defining paths
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -278,7 +278,7 @@ group_cols = [
     "w_i_n_adjust",
 ]
 
-# TODO: again, we can't have past returns as controls... if needed we can construct something like analyst revisions, but variables highly related to current price can't controlled for
+# NOTE: again, we can't have past returns as controls... if needed we can construct something like analyst revisions, but variables highly related to current price can't controlled for
 exog_cols = [
     "past_cumret_12",
     "beta",

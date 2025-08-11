@@ -49,7 +49,11 @@ Produces descriptive price path plots.
 
 - Estimate KY preference parameters of investors
 
-### 
+### `6_demand_function_estimation.py`
+
+- output results related to demand function estimates. 
+
+
 
 
 
