@@ -304,7 +304,7 @@ first_path = os.path.join(RESULTS_DIR, "Regression_Results", reg_version, "IVTes
 gf.create_path(first_path)
 
 # tt = time.time()
-# for trade_date in tqdm(trade_dates[:30]):
+# for trade_date in tqdm(trade_dates):
 #     print(trade_date)
 #     retail_file = os.path.join(
 #         RESULTS_DIR_OLD,

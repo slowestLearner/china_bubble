@@ -17,10 +17,11 @@ import os
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 UTIL_DIR = os.path.join(os.path.join(BASE_DIR, "code", "util"))
 CSMAR_DIR = os.path.join(BASE_DIR, "data", "csmar")
-RESULTS_DIR_OLD = os.path.join(BASE_DIR, "output", "results")
 RESULTS_DIR = os.path.join(BASE_DIR, "output_j", "results")
 TABLES_DIR = os.path.join(BASE_DIR, "output_j", "tables")
 FIGURES_DIR = os.path.join(BASE_DIR, "output_j", "figures")
+
+RESULTS_DIR_OLD = os.path.join(BASE_DIR, "output", "results")
 
 os.makedirs(RESULTS_DIR, exist_ok=True)
 os.makedirs(TABLES_DIR, exist_ok=True)
